@@ -1,0 +1,184 @@
+---
+title: "Out-of-sample prediction from mixed models in R using 'mixoutsamp'"
+subtitle: "Example R code using repeated-measures data on pig weights"
+author: 
+- Ruth H Keogh, Jessica K Barrett, Mike Sweeting
+output:
+  pdf_document: default
+---
+
+There does not appear to be an existing way of obtaining out-of-sample predictions from mixed models in R. I created the R function 'mixoutsamp', which provides out-of-sample predictions from mixed models fitted using lme in R. With thanks to Jessica Barrett and Mike Sweeting for contributing to this work. 
+
+The code for 'mixoutsamp' is provided in a separate file (mixoutsamp_v2.R. This document provides some examples to illustrate how 'mixoutsamp' can be used, using a data set called pigs.weights. This data set is freely available in R (in the SemiPar package) and contains 9 repeated weight measurements on 48 pigs. 
+
+#Preliminaries
+
+We start by loading the libraries needed and by loading the data.
+
+```{r, warning=FALSE}
+library(nlme)
+library(Matrix)
+library(SemiPar) #this package contains the data set pig.weights
+
+data(pig.weights)
+pigs=pig.weights #rename the data
+names(pigs)=c("id","week","weight")
+
+head(pigs)
+```
+
+Next, run the code for 'mixoutsamp'.
+
+```{r}
+source("./mixoutsamp_v2.R")
+```
+
+Separate the pigs data into an 'in-sample' part, which will be used to fit the mkxed models, and an 'out-of-sample' part, which will be used to illustrate the use of 'mixoutsamp'.
+
+```{r}
+pigs.insample=pigs[pigs$id<=40,] #the first 40 pigs
+pigs.outsample=pigs[pigs$id>40,] #the remaining 8 pigs
+```
+
+#Example 1
+
+In this example we fit a mixed model (with random intercept and slope) to the pigs.insample data. The model is used to obtain predicted values on the same pigs on which the model was fitted (pigs.insample) using the standard 'predict' function and using our code 'mixoutsamp'. In this example we do not need to use 'mixoutsamp' because 'predict' gives in-sample predictions, but this is used to illustrate that 'mixoutsamp' gives the same results.
+
+```{r, echo=TRUE}
+mixmod1=lme(weight~week,random=~1+week|id,data=pigs) # model with random intercept and slope
+
+#---
+#obtain fitted values
+#---
+pred.mixmod1=mixoutsamp(model=mixmod1,newdata=pigs) #using mixoutsamp
+testpred.mixmod1=predict(mixmod1,newdata=pigs) #using predict
+
+#---
+#Compare fitted values
+#---
+head(pred.mixmod1$preddata) #using mixoutsamp
+head(testpred.mixmod1) #using predict
+head(mixmod1$fitted) #directly from the model 
+
+#---
+#Compare random effects (random intercept and slope)
+#---
+head(pred.mixmod1$random)#using mixoutsamp
+head(as.data.frame(mixmod1$coefficients$random$id)) #directly from the model 
+```
+
+#Example 2
+
+In this example we fit a mixed model (with random intercept and slope) to the pigs.insample data. The model is used to obtain predicted values on a new set of pigs in the data set pigs.outsample.
+
+```{r}
+mixmod2=lme(weight~week,random=~1+week|id,data=pigs.insample,na.action=na.omit)
+
+#---
+#first note that using predict doesn't work for the out-of-sample pigs
+#---
+testpred.mixmod2=predict(mixmod2,newdata=pigs.outsample) 
+head(testpred.mixmod2)
+
+#---
+#using mixoutsamp to obtain out-of-sample predictions
+#---
+pred.mixmod2=mixoutsamp(model=mixmod2,newdata=pigs.outsample)
+pred.mixmod2$preddata #fitted values
+pred.mixmod2$random #random effects
+```
+
+#Example 3
+
+In this example we illustrate the use of 'mixoutsamp' when an exponential within-person correlation structure is specified (see the mixoutsamp file for other within-person correlation structures that are supported).
+
+```{r}
+mixmod3=lme(weight~week,random=~1+week|id,data=pigs.insample,corr=corExp(form = ~ week|id),na.action=na.omit,
+              control=lmeControl(maxIter=1000,msMaxIter=1000,opt="optim"))
+#---
+#---
+#first obtaining in-sample predictions for pigs.insample
+#---
+#---
+
+pred.mixmod3=mixoutsamp(model=mixmod3,newdata=pigs.insample) #using mixoutsamp
+testpred.mixmod3=predict(mixmod3,newdata=pigs.insample) #using predict
+
+#---
+#Compare fitted values
+#---
+head(pred.mixmod3$preddata) #using mixoutsamp
+head(testpred.mixmod3) #using predict
+head(mixmod3$fitted) #directly from the model 
+
+#---
+#Compare random effects (random intercept and slope)
+#---
+head(pred.mixmod3$random)#using mixoutsamp
+head(as.data.frame(mixmod3$coefficients$random$id)) #directly from the model 
+
+#---
+#---
+#also obtaining out-of-sample predictions for pigs.outsample
+#---
+#---
+
+pred.outsample.mixmod3=mixoutsamp(model=mixmod3,newdata=pigs.outsample) #using mixoutsamp
+```
+
+#Example 4
+
+In this example we illustrate using mixoutsamp for a setting with multivariate response. For illutration, we created a new variable 'height', which is measured alongside weight at each week (this is artificial variable - I do not really know how tall pigs are).
+
+```{r}
+#---
+#create a stacked data set with two response variables (weight and height) 
+#---
+pigs.multivar=rbind(pigs,pigs)
+pigs.multivar$response.type=rep(1:2,each=dim(pigs)[1])
+pigs.multivar$height=rep(rnorm(dim(pigs)[1],70+0.5*pigs$weight,5),2) #generating 'height'
+pigs.multivar$response=ifelse(pigs.multivar$response.type==1,pigs.multivar$weight,pigs.multivar$height) #reponse=1 for 'weight' and response=2 for 'height'
+
+#---
+#create in-sample and out-of-sample data sets as before
+#---
+pigs.multivar.insample=pigs.multivar[pigs.multivar$id<=40,] #the first 40 pigs
+pigs.multivar.outsample=pigs.multivar[pigs.multivar$id>40,] #the remaining 8 pigs
+```
+
+The model is a multivariate mixed model with height and weight as two responses. We allow a random intercept and slope for each response type. 
+
+```{r}
+#---
+#fit the mixed model with interactions by response type and separate residual variance by response type
+#---
+mixmod4=lme(response~week*response.type,random=~1+week*response.type|id,weights=varIdent(form=~1|response.type),data=pigs.multivar.insample,na.action=na.omit,
+              control=lmeControl(maxIter=1000,msMaxIter=1000,opt="optim")) 
+
+#---
+#first obtaining in-sample predictions for pigs.insample
+#---
+
+pred.mixmod4=mixoutsamp(model=mixmod4,newdata=pigs.multivar.insample) #using mixoutsamp
+testpred.mixmod4=predict(mixmod4,newdata=pigs.multivar.insample) #using predict
+
+#Compare fitted values
+head(pred.mixmod4$preddata) #using mixoutsamp
+head(testpred.mixmod4) #using predict
+head(mixmod4$fitted) #directly from the model 
+
+#Compare random effects (random intercepts and slopes)
+head(pred.mixmod4$random)#using mixoutsamp
+head(as.data.frame(mixmod4$coefficients$random$id)) #directly from the model 
+
+#---
+#also obtaining out-of-sample predictions for pigs.outsample
+#---
+
+pred.outsample.mixmod4=mixoutsamp(model=mixmod4,newdata=pigs.multivar.outsample)
+head(pred.outsample.mixmod4$preddata)
+head(pred.outsample.mixmod4$random)
+```
+
+
+
