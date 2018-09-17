@@ -1,5 +1,7 @@
-This repository provides R code for implementation of methods referred to in the manuscript entitled "Dynamic prediction of survival in cystic fibrosis: A landmarking analysis using patient registry data" (Authors: Ruth Keogh, Shaun Seaman, Jessica Barrett, David Taylor-Robinson, Rhonda Szczesniak). The manuscript is currently under review. A copy of the authors' original version of the full manuscript is available on request.
+This repository provides R code for implementation of methods referred to in the following paper:
 
+"Dynamic prediction of survival in cystic fibrosis: A landmarking analysis using UK patient registry data" 
+Ruth Keogh, Shaun Seaman, Jessica Barrett, David Taylor-Robinson, Rhonda Szczesniak. Epidemiology 2018. In Press.
 
 mixoutsamp_v2.R: R code for obtaining out-of-sample predictions from a mixed model fitted using lme.
 
