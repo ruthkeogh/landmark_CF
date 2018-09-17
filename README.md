@@ -9,4 +9,4 @@ mixed_models_outofsample_prediction: Illustrating the use of mixoutsamp on a fre
 
 estimated_survival_probabilities: R code for obtaining estimated survival probabilities using the dynamic prediction model developed in the above manuscript. Rmd file and corresponding pdf file. 
 
-baseline_cumulative_hazards.csv, times.csv, log_hazard_ratios.csv: csv files containing estimated baseline cumulative hzards, event/censoring time and log hazard ratios from the dynamic prediction model developed in the above manuscript. These are used in obtaining estimated survival probabilities. 
+baseline_cumulative_hazards, times, log_hazard_ratios: csv and RData files containing estimated baseline cumulative hzards, event/censoring time and log hazard ratios from the dynamic prediction model developed in the above manuscript. These are used to obtain the estimated survival probabilities. 
